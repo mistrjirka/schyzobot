@@ -1,0 +1,129 @@
+root ::= (statement newLine)*
+
+statement ::=
+    simpleStatement |
+    compoundStatement
+
+simpleStatement ::=
+    expressionStatement |
+    delStatement |
+    passStatement |
+    flowStatement |
+    importStatement |
+    globalStatement |
+    nonlocalStatement |
+    assertStatement
+
+expressionStatement ::= testListStarExpr (ws augAssign ws (yieldExpr | testList) | ws "=" ws (yieldExpr | testListStarExpr))? ws
+delStatement ::= "del" ws exprList ws
+passStatement ::= "pass" ws
+flowStatement ::= breakStatement | continueStatement | returnStatement | raiseStatement | yieldStatement
+breakStatement ::= "break" ws
+continueStatement ::= "continue" ws
+returnStatement ::= "return" ws testList? ws
+raiseStatement ::= "raise" ws test? (ws "from" ws test)? ws
+yieldStatement ::= yieldExpr ws
+
+importStatement ::= importName | importFrom
+importName ::= "import" ws dottedAsNames ws
+importFrom ::= "from" ws (("." | "...")* dottedName | ("." | "...")+) ws "import" ws ("*" | "(" ws importAsNames ws ")" | importAsNames) ws
+importAsName ::= name ws ("as" ws name ws)?
+dottedAsName ::= dottedName ws ("as" ws name ws)?
+importAsNames ::= importAsName (ws "," ws importAsName)* ws ","?
+dottedAsNames ::= dottedAsName (ws "," ws dottedAsName)*
+dottedName ::= name (ws "." ws name)* ws
+
+globalStatement ::= "global" ws name (ws "," ws name)* ws
+nonlocalStatement ::= "nonlocal" ws name (ws "," ws name)* ws
+assertStatement ::= "assert" ws test (ws "," ws test)? ws
+
+compoundStatement ::=
+    ifStatement |
+    whileStatement |
+    forStatement |
+    tryStatement |
+    withStatement |
+    funcDef |
+    classDef |
+    decorated
+
+ifStatement ::= "if" ws test ws ":" ws newLine block (ws "elif" ws test ws ":" ws newLine block)* (ws "else" ws ":" ws newLine block)?
+whileStatement ::= "while" ws test ws ":" ws newLine block (ws "else" ws ":" ws newLine block)?
+forStatement ::= "for" ws exprList ws "in" ws testList ws ":" ws newLine block (ws "else" ws ":" ws newLine block)?
+tryStatement ::= "try" ws ":" ws newLine block ((ws exceptClause ws ":" ws newLine block)+ (ws "else" ws ":" ws newLine block)? (ws "finally" ws ":" ws newLine block)? | ws "finally" ws ":" ws newLine block)
+withStatement ::= "with" ws withItem (ws "," ws withItem)* ws ":" ws newLine block
+withItem ::= test ws ("as" ws expr ws)?
+
+funcDef ::= "def" ws name ws parameters ws ("->" ws test)? ws ":" ws newLine block
+parameters ::= "(" ws typedArgsList? ws ")"
+typedArgsList ::= (tfpDef (ws "=" ws test)? (ws "," ws tfpDef (ws "=" ws test)?)* (ws "," ws ("*" ws tfpDef? (ws "," ws tfpDef (ws "=" ws test)?)* (ws "," ws ("**" ws tfpDef ws ","?)?)? | "**" ws tfpDef ws ","?)?) | "*" ws tfpDef? (ws "," ws tfpDef (ws "=" ws test)?)* (ws "," ws ("**" ws tfpDef ws ","?)?) | "**" ws tfpDef ",")?
+tfpDef ::= name (ws ":" ws test)?
+varArgsList ::= (vfpDef (ws "=" ws test)? (ws "," ws vfpDef (ws "=" ws test)?)* (ws "," ws ("*" ws vfpDef? (ws "," ws vfpDef (ws "=" ws test)?)* (ws "," ws ("**" ws vfpDef ws ","?)?)? | "**" ws vfpDef ws ","?)?) | "*" ws vfpDef? (ws "," ws vfpDef (ws "=" ws test)?)* (ws "," ws ("**" ws vfpDef ws ","?)?) | "**" ws vfpDef ",")?
+vfpDef ::= name
+
+decorated ::= decorators (classDef | funcDef | asyncFuncDef)
+decorators ::= decorator+
+decorator ::= "@" ws dottedName ws ("(" ws argList? ws ")")? ws
+
+asyncFuncDef ::= "async" ws funcDef
+classDef ::= "class" ws name ws "(" ws argList? ws ")" ws ":" ws newLine block
+
+block ::= (statement newLine)*
+
+testListStarExpr ::= (test | starExpr) (ws "," ws (test | starExpr))* ws ","?
+test ::= orTest (ws "if" ws orTest ws "else" ws test)? | lambdaDef
+orTest ::= andTest (ws "or" ws andTest)*
+andTest ::= notTest (ws "and" ws notTest)*
+notTest ::= "not" ws notTest | comparison
+comparison ::= expr (ws compOp ws expr)*
+compOp ::= "<" | ">" | "==" | ">=" | "<=" | "<>" | "!=" | "in" | "not in" | "is" | "is not"
+
+expr ::= term (ws binaryOp ws term)*
+term ::= atomExpr | ("+" | "-" | "~") ws term
+binaryOp ::= "+" | "-" | "*" | "@" | "/" | "%" | "//" | "**" | "<<" | ">>" | "&" | "|" | "^"
+
+atomExpr ::= await? ws atom ws trailer*
+atom ::= "(" ws (yieldExpr | testListComp)? ws ")" ws | "[" ws testListComp? ws "]" ws | "{" ws dictOrSetMaker? ws "}" ws | name ws | number ws | string+ ws | "..." ws | "None" ws | "True" ws | "False" ws
+name ::= identifier ws
+number ::= NUMBER ws
+string ::= STRING ws
+trailer ::= "(" ws argList? ws ")" ws | "[" ws subscriptList ws "]" ws | "." ws name ws
+subscriptList ::= subscript (ws "," ws subscript)* ws ","?
+subscript ::= test ws | test? ws ":" ws test? ws sliceOp?
+sliceOp ::= ":" ws test?
+
+yieldExpr ::= "yield" ws yieldArg? ws
+yieldArg ::= "from" ws test ws | testList ws
+
+argList ::= argument (ws "," ws argument)* ws ","?
+argument ::= test (ws "=" ws test)? ws | "**" ws test ws | "*" ws test ws
+
+exprList ::= (expr | starExpr) (ws "," ws (expr | starExpr))* ws ","?
+testList ::= test (ws "," ws test)* ws ","?
+
+starExpr ::= "*" ws expr ws
+
+# Identifiers
+identifier ::= [a-zA-Z_] [a-zA-Z_0-9]* ws
+
+# augAssign and other missing rules
+augAssign ::= "+=" ws | "-=" ws | "*=" ws | "/=" ws | "%=" ws | "&=" ws | "|=" ws | "^=" ws | "<<=" ws | ">>=" ws | "**=" ws | "//=" ws
+testListComp ::= (test | starExpr) (ws compFor | ws "," ws (test | starExpr))* ws
+compFor ::= "for" ws exprList ws "in" ws orTest ws compIter?
+compIter ::= compFor ws | compIf ws
+compIf ::= "if" ws testNocond ws compIter?
+testNocond ::= orTest ws | lambdaDefNocond ws
+lambdaDef ::= "lambda" ws varArgsList? ws ":" ws test ws
+lambdaDefNocond ::= "lambda" ws varArgsList? ws ":" ws testNocond ws
+dictOrSetMaker ::= ((test ws ":" ws test | "**" ws expr) (ws compFor | ws "," ws (test ws ":" ws test | "**" ws expr))* ws ","? ws) | (test ws | starExpr ws) (ws compFor | ws "," ws (test ws | starExpr ws))* ws ","?
+
+exceptClause ::= "except" ws (test ws ("as" ws name ws)?)? ws
+
+# Placeholders for number, string, and await
+NUMBER ::= [0-9]+ ws
+STRING ::= "\"" [^\"]* "\"" ws
+await ::= "await" ws
+
+# Whitespace and newline rules
+ws ::= [ \n\t]*
+newLine ::= "\n" ws
