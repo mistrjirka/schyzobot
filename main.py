@@ -37,7 +37,26 @@ def generate_response(prompt, llama_endpoint, n_predict=4096, temperature=0.55, 
         "temperature": temperature,
         "stop": stop_tokens,
         "tokens_cached": 0,
-        "repeat_penalty": 1.2
+        "repeat_penalty": 1.2,
+        "grammar": """
+            root ::= codeBlock text
+
+            # Code block rule
+            codeBlock ::= "```" lang "\n" code "\n```" "\n"
+
+            # Language identifier
+            lang ::= [a-zA-Z0-9]+
+
+            # Code content (excluding triple backticks)
+            code ::= ( [^`] | ("`" [^`] | "``" [^`]) )*
+
+            # Text content (excluding triple backticks)
+            text ::= ( [^`] | ("`" [^`] | "``" [^`]) )*
+
+            # Whitespace
+            ws ::= [ \t\n]*
+
+        """
     }
 
     retries = 5
@@ -91,7 +110,7 @@ middle_prompt = """<|eot_id|><|start_header_id|>{role}<|end_header_id|>{prompt}"
 
 
 llama_endpoint = "http://localhost:8086/completion"  # Replace with your actual endpoint
-programmer_endpoint = "http://localhost:8087/completion"  # Replace with your actual endpoint
+programmer_endpoint = "http://localhost:8086/completion"  # Replace with your actual endpoint
 
 roles = [
     {"system": personalities["programmer"], "assistant": "programmer", "url": programmer_endpoint},
