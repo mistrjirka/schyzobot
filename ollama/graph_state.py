@@ -2,7 +2,11 @@ from typing import List
 from typing_extensions import TypedDict
 
 class GraphState(TypedDict):
-    question: str
+    prompt: str
     answer: str
     code: str
     code_output: str
+    examples: str
+    explanation: str
+    failedTimes: int
+    type: str
