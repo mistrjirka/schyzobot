@@ -48,16 +48,24 @@ def judgeProgram(program: GraphState) -> bool:
     code_execution_result = program["code_output"]
     print(code_execution_result)
     print(program["code"])
-    answer = retrieval_classifier.invoke(
-        {
-            "code": program["code"], 
-            "examples_run": code_execution_result, 
-            "explanation": program["explanation"], 
-            "prompt": program["prompt"],
-            "examples": program["examples"]
-        }
-    )
-    print("answer: ", answer["answer"])
+    valid = False
+    retries = 0
+    answer = None
+    while not valid and retries < 5:
+        answer = retrieval_classifier.invoke(
+            {
+                "code": program["code"], 
+                "examples_run": code_execution_result, 
+                "explanation": program["explanation"], 
+                "prompt": program["prompt"],
+                "examples": program["examples"]
+            }
+        )
+        if("answer" in answer and answer["answer"] in [True, False]):
+            valid = True
+        else:
+            retries += 1
+
     return answer["answer"]
     
 if __name__ == "__main__":
