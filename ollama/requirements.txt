@@ -6,3 +6,4 @@ langchainhub
 tiktoken
 chromadb
 sentence-transformers
+langgraph
