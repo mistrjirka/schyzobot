@@ -23,7 +23,7 @@ promptEN = PromptTemplate(
             - **Initial Prompt**: {prompt}
             - **Previous Code**: {code}
             - **Previous Result**: {previous_result}
-            - **Error in previous iteration**: {failure_reason}
+            - **Error in previous iteration**: {failiure_reason}
 
 
             ### Requirements:
@@ -37,7 +37,7 @@ promptEN = PromptTemplate(
 
             ### Example JSON Output:
             ```json
-            {
+            {{
                 "code": "import numpy as np\nfrom scipy import stats\n\ndef calculate_mean_std_dev(data):\n    mean = np.mean(data)\n    std_dev = np.std(data)\n    return mean, std_dev\n\ndata = np.array([1, 2, 3, 4, 5])\nmean, std_dev = calculate_mean_std_dev(data)\nprint(mean, std_dev)",
                 "explanation": "I used the NumPy library to create an array and the SciPy library to calculate the mean and standard deviation.",
                 "examples": "# Using the function\ndata = np.array([1, 2, 3, 4, 5])\nmean, std_dev = calculate_mean_std_dev(data)\nprint(mean, std_dev)",
@@ -45,7 +45,7 @@ promptEN = PromptTemplate(
                     "def test_mean():\n    data = np.array([1, 2, 3, 4, 5])\n    mean, _ = calculate_mean_std_dev(data)\n    return mean == 3.0",
                     "def test_std_dev():\n    data = np.array([1, 2, 3, 4, 5])\n    _, std_dev = calculate_mean_std_dev(data)\n    return std_dev == np.std([1, 2, 3, 4, 5])"
                 ]
-            }
+            }}
             ```
 
 

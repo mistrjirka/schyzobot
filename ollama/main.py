@@ -213,7 +213,7 @@ QUESTION6 = """
     Implementujte vše v pythonu.
 """
 state = GraphState()
-state["prompt"] = QUESTION6
+state["prompt"] = QUESTION4
 state["previous_result"] = "None"
 state["previous_code"] = "None"
 state["failedTimes"] = 0
