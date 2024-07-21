@@ -50,7 +50,7 @@ promptEN = PromptTemplate(
 
 
     """,
-    inputs=["code", "prompt", "previous_result", "failiure_reason"]
+    inputs=["code", "prompt", "previous_result", "failure_reason"]
 )
 
 retrieval_classifier = promptEN | llm | JsonOutputParser()
@@ -97,7 +97,7 @@ def makeProgram(state: GraphState) -> str:
                 "prompt": state["prompt"], 
                 "previous_result": previous_result, 
                 "code": previous_code,
-                "failiure_reason": failiure_reason
+                "failure_reason": failiure_reason
             }
         )
         failiure_reason = ""
@@ -116,7 +116,7 @@ def makeProgram(state: GraphState) -> str:
         #print("explanation: ", explanation)
         if not "examples" in answer or len(answer["examples"]) == 0:
             failiure_reason = "missing examples key in the generated JSON"
-            print("missing print statement")
+            print("missing examples")
             retries += 1
             continue
         
@@ -152,7 +152,9 @@ def makeProgram(state: GraphState) -> str:
             else:
                 function_name = get_function_name(test)
                 call = function_name + "()"
-                test_with_call = test + "\n" + call
+                test_with_call = f"""{answer["code"]}\n{test}\nprint("___test result: " + str({call}) + "___")"""
+                print("test_with_call: \n ", test_with_call)
+                
                 executed_test = execute_python_code(test_with_call)
                 failiure_reasonTemplate = f"Test failed \n{test} \n{executed_test[0]}\n"
                 end = "----------\n"
@@ -162,11 +164,13 @@ def makeProgram(state: GraphState) -> str:
                 elif not executed_test[0]:
                     failed = True
                     failiure_reason += failiure_reasonTemplate + "test did not return a value" + end
-                elif executed_test[0] != "True":
+                elif not "___test result: True___" in executed_test[0]:
                     failed = True
                     failiure_reason += failiure_reasonTemplate + "test did not return True" + end
 
         if failed:
+            print("failed tests")
+            print(failiure_reason)
             retries += 1
             continue
 
