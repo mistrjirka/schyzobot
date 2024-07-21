@@ -1,0 +1,5 @@
+Flask
+Flask-Cors
+waitress
+requests
+openai==0.28
