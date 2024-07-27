@@ -4,7 +4,7 @@ import threading
 import time
 
 # Assuming the dummy server code is in a file named dummy_openai_server.py
-from openai_server import app
+from smart.openai_server import app
 
 class TestDummyOpenAIServerWithOpenAI(unittest.TestCase):
 
