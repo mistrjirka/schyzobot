@@ -1,10 +1,10 @@
 from langgraph.graph import END, StateGraph
-from graph_state import GraphState
-from programmer_controllerEDGE import judgeProgram
-from programmer_modelNODE import makeProgram
-from question_classifierNODE import classify_question
-from retarded_radekNODE import answer
-from resultNODE import getFormattedResult
+from .graph_state import GraphState
+from .programmer_controllerEDGE import judgeProgram
+from .programmer_modelNODE import makeProgram
+from .question_classifierNODE import classify_question
+from .retarded_radekNODE import answer
+from .resultNODE import getFormattedResult
 failedThreshold = 5
 workflow = StateGraph(GraphState)
 workflow.add_node("classify_question", classify_question)

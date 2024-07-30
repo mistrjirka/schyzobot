@@ -1,8 +1,8 @@
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 
-from graph_state import GraphState
-from ollama_model import llm
+from .graph_state import GraphState
+from .ollama_model import llm
 
 
 
@@ -51,6 +51,9 @@ def judgeProgram(program: GraphState) -> bool:
     valid = False
     retries = 0
     answer = None
+    if program["failedTimes"] > 5:
+        return True
+
     while not valid and retries < 5:
         answer = retrieval_classifier.invoke(
             {
@@ -70,13 +73,4 @@ def judgeProgram(program: GraphState) -> bool:
 
     return answer["answer"]
     
-if __name__ == "__main__":
-    import programmer_modelNODE
-    prompt = {}
-    prompt["prompt"] = "I want to solve fitting a linear regression model to a dataset. I have it here [(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)]. Can you find parameters for me?"
-    prompt["previous_result"] = "None"
-    prompt["previous_code"] = "None"
-    result = programmer_modelNODE.makeProgram(prompt)
-
-    print(judgeProgram(result))
 

@@ -12,3 +12,6 @@ Flask-Cors
 waitress
 requests
 openai==0.28
+aiopyston
+langchain-chroma
+bs4

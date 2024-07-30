@@ -1,5 +1,5 @@
 from graph import chatBot
-from graph_state import GraphState
+from .graph_state import GraphState
 QUESTION = "I want to solve fitting a linear regression model to a dataset. I have it here [(1.0, 2.5), (2, 3), (3, 4), (4, 5), (5, 6)]. Can you find parameters for me?"
 QUESTION2 = "I want to fuck your mom bitch."
 QUESTION3 = """

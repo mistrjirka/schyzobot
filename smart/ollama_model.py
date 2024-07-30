@@ -1,7 +1,7 @@
 from langchain_community.chat_models import ChatOllama
 
 # select ollama model
-MODEL = "dolphin-llama3:8b-v2.9-fp16"#"dolphin-llama3:70b"#"dolphin-llama3:8b-v2.9-q8_0"
+MODEL = "dolphin-llama3:8b-v2.9-q8_0"#"dolphin-llama3:70b"#"dolphin-llama3:8b-v2.9-q8_0"
 # higher temparature means higher creativity
 TEMPERATURE = 0.5
 

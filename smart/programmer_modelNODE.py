@@ -1,52 +1,75 @@
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
+from pyston import PystonClient, File
 import subprocess
 import sys
-from graph_state import GraphState
-from ollama_model import llm
+import asyncio
+from .graph_state import GraphState
+from .ollama_model import llm
 import re
+import os
 max_retries = 5
 
 promptEN = PromptTemplate(
     template="""
-            **Task: Write Python code to solve a problem**
-            You are a proficient Python programmer with knowledge of NumPy and SciPy. Your task is to write Python code to solve a given problem. You might be asked to solve the task repeatedly until successful, receiving previous results and previous code each time.
+**Task: Write Python code to solve a problem**
+You are a proficient Python programmer with knowledge of NumPy and SciPy. Your task is to write Python code to solve a given problem. You might be asked to solve the task repeatedly until successful, receiving previous results and previous code each time.
 
-            ### Conditions:
-            - If this is the first time you are given the task, `previous_result` and `previous_code` will be `None`.
-            - You can use any libraries you want.
-            - The code must include a `print` statement to be considered valid.
-            - The code must not contain any special characters that could break the JSON format or prevent the code from being executed.
-            - The example code snippet must contain print statements to demonstrate the code's functionality.
+### Conditions:
+- If this is the first time you are given the task, `previous_result` and `previous_code` will be `None`.
+- You can use any libraries you want.
+- The code must include a `print` statement to be considered valid.
+- The code must not contain any special characters that could break the JSON format or prevent the code from being executed.
+- The example code snippet must contain print statements to demonstrate the code's functionality.
 
-            ### Task:
-            - **Initial Prompt**: {prompt}
-            - **Previous Code**: {code}
-            - **Previous Result**: {previous_result}
-            - **Error in previous iteration**: {failure_reason}
+### Task:
+- **Initial Prompt**: {prompt}
+- **Previous Code**: {code}
+- **Previous Result**: {previous_result}
+- **Error in previous iteration**: {failure_reason}
 
 
-            ### Requirements:
-            1. Write Python code to solve the task.
-            2. Ensure the code includes at least one `print` statement.
-            3. Provide the code and the reasoning behind it in a JSON object with four keys:
-            - `code`: A string containing the Python code. Escape special JSON characters appropriately.
-            - `explanation`: A string explaining the code.
-            - `examples`: A string containing Python example code snippets demonstrating how to use the provided code. The examples must include `print` statements and executable code.
-            - `tests`: An array of Python functions that are unit tests. Each function must not take any arguments and must output `True` or `False` indicating if the test passed or not.
+### Requirements:
+1. Write Python code to solve the task.
+2. Ensure the code includes at least one `print` statement.
+3. Provide the code and the reasoning behind it in a JSON object with four keys:
+- `code`: A string containing the Python code. Escape special JSON characters appropriately.
+- `explanation`: A string explaining the code.
+- `examples`: A string containing Python example code snippets demonstrating how to use the provided code. The examples must include `print` statements and executable code.
+- `tests`: An array of Python functions that are unit tests. Each function must not take any arguments and must output `True` or `False` indicating if the test passed or not.
 
-            ### Example JSON Output:
-            ```json
-            {{
-                "code": "import numpy as np\nfrom scipy import stats\n\ndef calculate_mean_std_dev(data):\n    mean = np.mean(data)\n    std_dev = np.std(data)\n    return mean, std_dev\n\ndata = np.array([1, 2, 3, 4, 5])\nmean, std_dev = calculate_mean_std_dev(data)\nprint(mean, std_dev)",
-                "explanation": "I used the NumPy library to create an array and the SciPy library to calculate the mean and standard deviation.",
-                "examples": "# Using the function\ndata = np.array([1, 2, 3, 4, 5])\nmean, std_dev = calculate_mean_std_dev(data)\nprint(mean, std_dev)",
-                "tests": [
-                    "def test_mean():\n    data = np.array([1, 2, 3, 4, 5])\n    mean, _ = calculate_mean_std_dev(data)\n    return mean == 3.0",
-                    "def test_std_dev():\n    data = np.array([1, 2, 3, 4, 5])\n    _, std_dev = calculate_mean_std_dev(data)\n    return std_dev == np.std([1, 2, 3, 4, 5])"
-                ]
-            }}
-            ```
+### Example JSON Output:
+```json
+{{
+    "code": "
+import numpy as np
+from scipy import stats
+
+def calculate_mean_std_dev(data):
+    mean = np.mean(data)
+    std_dev = np.std(data)
+    return mean, std_dev
+
+
+data = np.array([1, 2, 3, 4, 5])
+mean, std_dev = calculate_mean_std_dev(data)
+print(mean, std_dev)",
+    "explanation": "I used the NumPy library to create an array and the SciPy library to calculate the mean and standard deviation.",
+    "examples": "# Using the function\ndata = np.array([1, 2, 3, 4, 5])\nmean, std_dev = calculate_mean_std_dev(data)\nprint(mean, std_dev)",
+    "tests": [
+"
+def test_mean():
+    data = np.array([1, 2, 3, 4, 5])
+    mean, _ = calculate_mean_std_dev(data)
+    return mean == 3.0",
+"
+def test_std_dev():
+    data = np.array([1, 2, 3, 4, 5])
+    something, std_dev = calculate_mean_std_dev(data)
+    return std_dev == np.std([1, 2, 3, 4, 5])"
+    ]
+}}
+```
 
 
     """,
@@ -62,21 +85,23 @@ def get_function_name(code):
         return function_names[0]
     return None
 
-#to change
-def execute_python_code(code):
+async def async_execute_python_code(code):
     executed_correctly = False
-    try:
-        result = subprocess.run(
-            [sys.executable, "-c", code],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        output = result.stdout + result.stderr
-        executed_correctly = True
-    except Exception as e:
-        output = str(e)
+    client = PystonClient()
+    result = await client.execute("python", [File(code)])
+    print("output from execution: ", result.run_stage.output)
+    output = result.run_stage.output
+    executed_correctly = result.run_stage.code == 0
     return (output, executed_correctly)
+
+def execute_python_code(code):
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop.run_until_complete(async_execute_python_code(code))
+
 
 def makeProgram(state: GraphState) -> str:
     print("making program")
@@ -155,7 +180,7 @@ def makeProgram(state: GraphState) -> str:
                 function_name = get_function_name(test)
                 call = function_name + "()"
                 test_with_call = f"""{answer["code"]}\n{test}\nprint("___test result: " + str({call}) + "___")"""
-                print("test_with_call: \n ", test_with_call)
+                print("test_with_call: \n", test_with_call)
                 
                 executed_test = execute_python_code(test_with_call)
                 failure_reasonTemplate = f"Test failed \n{test} \n{executed_test[0]}\n"
