@@ -4,21 +4,43 @@ from .programmer_controllerEDGE import judgeProgram
 from .programmer_modelNODE import makeProgram
 from .question_classifierNODE import classify_question
 from .retarded_radekNODE import answer
+from .memoryNODE import process_graph_state
 from .resultNODE import getFormattedResult
+from .getLinksPromptNODE import links_prompt
+from .extractLinksDataNODE import load_links
+from .preResearchEdge import classify_prompt_researchNeeded
 failedThreshold = 5
 workflow = StateGraph(GraphState)
 workflow.add_node("classify_question", classify_question)
 workflow.add_node("makeProgram", makeProgram)
 workflow.add_node("retarded_radek", answer)
 workflow.add_node("result", getFormattedResult)
+workflow.add_node("context", process_graph_state)
+workflow.add_node("linksPrompt", links_prompt)
+workflow.add_node("load_links", load_links)
 
-workflow.set_entry_point("classify_question")
+
+workflow.set_entry_point("linksPrompt")
+workflow.add_conditional_edges(
+    "linksPrompt",
+    classify_prompt_researchNeeded,
+    {
+        "RESEARCH": "context",
+        "SUMMARIZE": "load_links"
+    }
+)
+
+workflow.add_edge("load_links", "classify_question")
+    
+workflow.add_edge("context", "classify_question")
+
 workflow.add_conditional_edges(
     "classify_question",
     lambda state: state["type"],
     {
         "other": "retarded_radek",
-        "needs_code": "makeProgram"
+        "code_related": "retarded_radek",
+        "python": "makeProgram"
     },
 )
 

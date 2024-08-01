@@ -15,3 +15,5 @@ openai==0.28
 aiopyston
 langchain-chroma
 bs4
+requests 
+html2text

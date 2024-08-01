@@ -6,13 +6,17 @@ from smart.graph_state import GraphState
 app = Flask(__name__)
 
 
-def get_answer(query, update_callback):
+def get_answer(query,messages, update_callback):
     state = GraphState()
     print("query: ", query)
     state["prompt"] = query["content"]
     state["previous_result"] = "None"
     state["previous_code"] = "None"
     state["failedTimes"] = 0
+    state["type"] = "other"
+    state["messages"] = messages
+    state["links"] = []
+    state["additionalResources"] = []
     #state["update_process"] = update_callback
     #update_callback("Starting the process...\n")
     
@@ -55,6 +59,7 @@ def generate_template(result):
 def openapi_chat():
     data = request.get_json()
     messages = data.get("messages", "default_value")
+    messagesFormated = [(message["role"], message["content"]) for message in messages]
 
     def generate():
         message = messages[-1]
@@ -62,10 +67,10 @@ def openapi_chat():
             splitto4 = len(update) // 4
             for i in range(4):
                 yield f"data: {json.dumps(generate_template(update[i*splitto4:(i+1)*splitto4]))}\n\n"
-        yield from update_progress("Working on it...")
+        #yield from update_progress("Working on it...")
         
 
-        result = get_answer(message, update_progress)
+        result = get_answer(message, messagesFormated, update_progress)
         response_data = generate_template(result)
         yield f"data: {json.dumps(response_data)}\n\n"
 

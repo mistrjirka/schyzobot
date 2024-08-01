@@ -26,6 +26,10 @@ promptEN = PromptTemplate(
         - **Examples Run**: {examples_run}
         - **Code Explanation**: {explanation}
         - **Examples**: {examples}
+        
+        ### Start of context (additional resources):
+        {context}
+        ### End of context: 
 
         ### Instructions:
         1. Verify that the code runs without errors.
@@ -39,7 +43,7 @@ promptEN = PromptTemplate(
         - `true` if the code is correct and meets the prompt requirements.
         - `false` if the code is incorrect or does not meet the prompt requirements.
     """,
-    inputs=["prompt", "code_output", "explanation", "prompt", "examples"]
+    inputs=["prompt", "code_output", "explanation", "prompt", "examples", "context"]
 )
 retrieval_classifier = promptEN | llm | JsonOutputParser()
 
@@ -61,7 +65,8 @@ def judgeProgram(program: GraphState) -> bool:
                 "examples_run": code_execution_result, 
                 "explanation": program["explanation"], 
                 "prompt": program["prompt"],
-                "examples": program["examples"]
+                "examples": program["examples"],
+                "context": program["additionalResources"]
             }
         )
         if("answer" in answer and answer["answer"] in [True, False]):

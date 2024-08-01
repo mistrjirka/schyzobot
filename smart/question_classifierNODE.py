@@ -4,39 +4,88 @@ from langchain_core.output_parsers import JsonOutputParser
 from .graph_state import GraphState
 from .ollama_model import llm
 
-CLASSES = ["needs_code", "other"]
+CLASSES = ["code_related", "other", "python"]
 
 promptEN = PromptTemplate(
     template="""
-        You are given a prompt that you will classify.
+Including example inputs and outputs can indeed help in making the classification clearer and more accurate. Here is the revised prompt with example inputs and outputs:
 
-        ### Prompt:
-        {prompt}
+markdown
 
-        ### Instructions:
-        Classify the question into one of the following types:
-        - `needs_code`: This classification applies if the question can be solved by writing code. This option is prefered if the prompt requires some logic, calculations, or data manipulation to be done. Generaly math problems should be classified as needs_code.
-        - `other`: This classification applies if the question does not require any code to be answered.
+You are given a prompt that you will classify.
 
-        ### Important:
-        - Carefully analyze the prompt to determine if it explicitly or implicitly requires code to solve the task or answer the question. Look for keywords or phrases that indicate the need for code.
-        - Provide only the class name as the answer.
+### Prompt:
+{prompt}
 
-        ### Output:
-        Provide a JSON object with one key `answer` and the classification as a string.
+### Instructions:
+Classify the question into one of the following types:
+- `code_related`: This classification applies if the task involves code but does not specifically require Python. It may involve explaining code, writing code in a different language, or writing code for a specific platform or framework. This is the preferred classification if you are unsure whether the task requires Python.
+- `other`: This classification applies if the question does not require any code to be answered.
+- `python`: This classification applies if the question really needs Python to solve the task, including writing code for logic, calculations, or data manipulation. This classification is specific to Python and should not be used for other programming languages.
 
-        ### Example JSON Output:
+### Important:
+- Carefully analyze the prompt to determine if it explicitly or implicitly requires Python or any other code to solve the task or answer the question. Look for keywords or phrases that indicate the need for code.
+- Provide only the class name as the answer.
+- If the task cannot be solved with Python or it specifies a different language, classify it as `code_related` or `other` accordingly.
 
-        "answer": "needs_code"
-    """,
-    inputs=["prompt"]
+### Output:
+Provide a JSON object with one key `answer` and the classification as a string.
+
+### Example Inputs and Outputs:
+#### Example 1:
+**Input Prompt:** "Explain how a bubble sort algorithm works." or "Help me write code for Unreal Engine" or "Write a make file for compiling C++ code."
+**Classification:** 
+
+{{
+"answer": "code_related"
+}}
+
+#### Example 2:
+**Input Prompt:** "Write a Python script to calculate the factorial of a number." or "Calculate 100th fibonacci number."
+**Classification:** 
+
+{{
+"answer": "python"
+}}
+
+
+
+#### Example 3:
+**Input Prompt:** "What is the capital of France?"
+**Classification:** 
+
+{{
+"answer": "other"
+}}
+
+Remember there are only three classes: `code_related`, `other`, and `python`. Choose the most appropriate class based on the prompt.
+
+Previous failure or failed attempt:
+{failure}
+""",
+    inputs=["prompt", "failure"]
 )
 
 retrieval_classifier = promptEN | llm | JsonOutputParser()
 
 def classify_question(state: GraphState) -> str:
     prompt = state["prompt"]
-    answer = retrieval_classifier.invoke(prompt)
+    retries = 0
+    answer = {"answer":"other"}
+    answerCorrect = False
+    failure = "No previous failure"
+    while retries < 10 and not answerCorrect:
+        try:
+            answer = retrieval_classifier.invoke({"prompt": prompt, "failure": failure})
+            if "answer" in answer and answer["answer"] in CLASSES:
+                answerCorrect = True
+                break
+            else:
+                print("Invalid Classification: {}".format(answer) + " please classify the question into one of the following types: code_related, other, python\n")  
+                failure = "Invalid Classification: {} please classify the question into one of the following types: code_related, other, python\n".format(answer)  
+        except:
+            retries += 1
+    
     state["type"] = answer["answer"]
     #print("classified question as: ", state["type"])
     #state["update_process"]("classified question as: " + state["type"] + "\n")

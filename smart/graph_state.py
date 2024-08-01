@@ -11,4 +11,6 @@ class GraphState(TypedDict):
     failedTimes: int
     type: str
     additionalResources: list[tuple[str, str]] # list of (url, description) tuples
+    links: list[str]
+    messages: list[tuple[str,str]]
     

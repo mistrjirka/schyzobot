@@ -5,7 +5,12 @@ def getFormattedResult(result: GraphState):
     code = result["code"]
     explanation = result["explanation"]
     example = result["examples"]
-
+    # extract metadata links
+    resources = result["additionalResources"]
+    links = ""
+    for resource in resources:
+        links += f"{resource.metadata["source"]}\n"
+    
     result["answer"] = f"""
 
 ## Code:
@@ -31,6 +36,10 @@ def getFormattedResult(result: GraphState):
 ## Explanation:
 
 {explanation}
+
+## Additional Resources:
+
+{links}
     """
 
     return result
