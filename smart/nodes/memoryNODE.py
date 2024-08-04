@@ -2,15 +2,15 @@ import hashlib
 import os
 import json
 from langchain_community.utilities import SearxSearchWrapper
-from .ollama_model import llm, llmNoJson  # Ensure this is correctly imported
+from smart.models.ollama_model import llm, llmNoJson  # Ensure this is correctly imported
 from langchain_chroma import Chroma
-from .graph_state import GraphState
-from .webLoader import load_and_split_websites
-from .embeddings import embeddings
+from smart.helpers.graph_state import GraphState
+from smart.helpers.webLoader import load_and_split_websites
+from smart.models.embeddings import embeddings
 from typing import List
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
-from .sourceClassifier import grade_document,create_chroma_query
+from smart.helpers.sourceClassifier import grade_document,create_chroma_query
 from langchain_core.prompts import ChatPromptTemplate
 
 import re

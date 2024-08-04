@@ -1,14 +1,14 @@
 from langgraph.graph import END, StateGraph
-from .graph_state import GraphState
-from .programmer_controllerEDGE import judgeProgram
-from .programmer_modelNODE import makeProgram
-from .question_classifierNODE import classify_question
-from .nocodeNODE import answer
-from .memoryNODE import process_graph_state
-from .resultNODE import getFormattedResult
-from .getLinksPromptNODE import links_prompt
-from .extractLinksDataNODE import load_links
-from .preResearchEdge import classify_prompt_researchNeeded
+from .helpers.graph_state import GraphState
+from .edge.programmer_controllerEDGE import judgeProgram
+from .nodes.programmer_modelNODE import makeProgram
+from .nodes.question_classifierNODE import classify_question
+from .nodes.nocodeNODE import answer
+from .nodes.memoryNODE import process_graph_state
+from .nodes.resultNODE import getFormattedResult
+from .nodes.getLinksPromptNODE import links_prompt
+from .nodes.extractLinksDataNODE import load_links
+from .edge.preResearchEDGE import classify_prompt_researchNeeded
 failedThreshold = 5
 workflow = StateGraph(GraphState)
 workflow.add_node("classify_question", classify_question)

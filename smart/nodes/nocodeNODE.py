@@ -2,11 +2,11 @@
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from .graph_state import GraphState
-from .ollama_model import llmNoJson, genericPrompt
-from .programming_model import llmNoJson as codingllm
-from .formatDocument import document_formatter
-from .generalHelpers import escape_curly_braces
+from smart.helpers.graph_state import GraphState
+from smart.models.ollama_model import llmNoJson, genericPrompt
+from smart.models.programming_model import llmNoJson as codingllm
+from smart.helpers.formatDocument import document_formatter
+from smart.helpers.generalHelpers import escape_curly_braces
 def answer(prompt: GraphState) -> str:
 
     print("retarded radek")

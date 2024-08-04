@@ -1,4 +1,4 @@
-from .graph_state import GraphState
+from smart.helpers.graph_state import GraphState
 
 def getFormattedResult(result: GraphState):
     code_execution_result = result["code_output"]

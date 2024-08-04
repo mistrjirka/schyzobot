@@ -1,8 +1,8 @@
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 
-from .graph_state import GraphState
-from .ollama_model import llm
+from smart.helpers.graph_state import GraphState
+from smart.models.ollama_model import llm
 
 
 

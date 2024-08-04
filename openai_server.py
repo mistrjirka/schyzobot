@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify, Response, json
 from time import sleep
 from smart.graph import chatBot
-from smart.graph_state import GraphState
-from smart.generalHelpers import escape_messages_curly_braces,escape_curly_braces
+from smart.helpers.graph_state import GraphState
+from smart.helpers.generalHelpers import escape_messages_curly_braces,escape_curly_braces
 app = Flask(__name__)
 
 

@@ -1,5 +1,5 @@
 import re
-from .graph_state import GraphState
+from smart.helpers.graph_state import GraphState
 
 def extract_links_from_prompt(prompt_text):
     # Use regex to find all links in the prompt text

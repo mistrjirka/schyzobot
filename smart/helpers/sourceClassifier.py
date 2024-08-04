@@ -1,8 +1,8 @@
-from .ollama_model import llm, llmNoJson  # Ensure this is correctly imported
+from smart.models.ollama_model import llm, llmNoJson  # Ensure this is correctly imported
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain.prompts import PromptTemplate
-from .graph import GraphState
+from smart.helpers.graph_state import GraphState
 from langchain_core.prompts import ChatPromptTemplate
 
 promptEN = PromptTemplate(

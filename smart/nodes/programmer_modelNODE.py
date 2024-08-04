@@ -4,8 +4,8 @@ from pyston import PystonClient, File
 import subprocess
 import sys
 import asyncio
-from .graph_state import GraphState
-from .ollama_model import llm
+from smart.helpers.graph_state import GraphState
+from smart.models.ollama_model import llm
 import re
 import os
 max_retries = 5
