@@ -3,7 +3,7 @@ from .graph_state import GraphState
 from .programmer_controllerEDGE import judgeProgram
 from .programmer_modelNODE import makeProgram
 from .question_classifierNODE import classify_question
-from .retarded_radekNODE import answer
+from .nocodeNODE import answer
 from .memoryNODE import process_graph_state
 from .resultNODE import getFormattedResult
 from .getLinksPromptNODE import links_prompt
@@ -40,7 +40,7 @@ workflow.add_conditional_edges(
     {
         "other": "retarded_radek",
         "code_related": "retarded_radek",
-        "python": "makeProgram"
+        "python": "retarded_radek"
     },
 )
 

@@ -40,7 +40,17 @@ Provide a JSON object with one key `answer` and the classification as a string.
 "answer": "code_related"
 }}
 
+
 #### Example 2:
+**Input Prompt:** "What is the capital of France?" or "Summarize what is on this website. https://www.example.com" or "Summarize this article. https://www.example.com/article"
+**Classification:** 
+
+{{
+"answer": "other"
+}}
+
+
+#### Example 3:
 **Input Prompt:** "Write a Python script to calculate the factorial of a number." or "Calculate 100th fibonacci number."
 **Classification:** 
 
@@ -49,14 +59,6 @@ Provide a JSON object with one key `answer` and the classification as a string.
 }}
 
 
-
-#### Example 3:
-**Input Prompt:** "What is the capital of France?"
-**Classification:** 
-
-{{
-"answer": "other"
-}}
 
 Remember there are only three classes: `code_related`, `other`, and `python`. Choose the most appropriate class based on the prompt.
 

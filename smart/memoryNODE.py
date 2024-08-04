@@ -7,19 +7,25 @@ from langchain_chroma import Chroma
 from .graph_state import GraphState
 from .webLoader import load_and_split_websites
 from .embeddings import embeddings
-from sentence_transformers import SentenceTransformer
 from typing import List
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
-from .sourceClassifier import grade_document
+from .sourceClassifier import grade_document,create_chroma_query
+from langchain_core.prompts import ChatPromptTemplate
+
 import re
 
 HASHES_FILE = 'document_hashes.json'
 
 promptSearchQuery = PromptTemplate(
-    template="""You are a search engine query generator. Given the following user question, create a relevant search engine query.
+    template="""
+Previous conversation with the user:
+{all_messages}
 
-Question: {question}
+Question: 
+{question}
+
+You are a search engine query generator. Given the following user question, create a relevant search engine query.
 
 The result should be a string containing the search query. No explanation or preamble is needed. Your answer will go straight into the search engine. So include just 1 best query. Do not include nay specification about what is the query.
 Example input and output:
@@ -29,9 +35,9 @@ Input Question: "What is the population of India?"
 Output: "population of India"
 Input Question: "How to calculate fast fourier transform?"
 Output: "fast fourier transform calculation"
-
 """,
-input_variables=["question"]
+
+input_variables=["question", "all_messages"]
 )
 searchQueryCreator = promptSearchQuery | llmNoJson | StrOutputParser()
     
@@ -55,12 +61,11 @@ def save_hashes(file_path, hashes):
         json.dump(list(hashes), file)
         
 def create_search_query(prompt: GraphState):
-    query = searchQueryCreator.invoke({"question": prompt["prompt"]})  
+    all_messages = prompt["messages"]
+    promptChat = ChatPromptTemplate.from_messages(all_messages)
+    query = searchQueryCreator.invoke({"question": prompt["prompt"], "all_messages": promptChat})  
     print("Search query: " + query)
     return query
-    
-    
-    
 
 def process_graph_state(graph_state: GraphState) -> GraphState:
     search = SearxSearchWrapper(searx_host="http://192.168.1.14:81", unsecure=True)  # Replace with your SearxNG instance URL
@@ -85,17 +90,23 @@ def process_graph_state(graph_state: GraphState) -> GraphState:
         if doc_hash not in existing_hashes:
             new_docs.append(doc)
             new_hashes.add(doc_hash)
+        else:
+            print(f"Document with hash {doc_hash} already exists")
 
     if new_docs:
         chroma_db.add_documents(new_docs)
         existing_hashes.update(new_hashes)
         save_hashes(HASHES_FILE, existing_hashes)
 
-    retriever = chroma_db.as_retriever(search_kwargs={"k": 28})
-    results = retriever.invoke(graph_state["prompt"])
+    retriever = chroma_db.as_retriever(search_kwargs={"k": 50})
+    searchChroma = create_chroma_query(graph_state)
+    print("Search Chroma: " + searchChroma)
+    results = retriever.invoke(searchChroma)
     indx = 0
-    while len(relevant_resources) < 6 and indx < len(results):
-        if grade_document(graph_state["prompt"], results[indx]):
+    all_messages = graph_state["messages"]
+
+    while len(relevant_resources) < 15 and indx < len(results):
+        if grade_document(graph_state["prompt"], results[indx], all_messages):
             relevant_resources.append(results[indx])
         indx += 1
 

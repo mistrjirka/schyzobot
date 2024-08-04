@@ -17,3 +17,5 @@ langchain-chroma
 bs4
 requests 
 html2text
+textstat
+selenium

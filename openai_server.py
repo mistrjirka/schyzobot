@@ -2,19 +2,19 @@ from flask import Flask, request, jsonify, Response, json
 from time import sleep
 from smart.graph import chatBot
 from smart.graph_state import GraphState
-
+from smart.generalHelpers import escape_messages_curly_braces,escape_curly_braces
 app = Flask(__name__)
 
 
 def get_answer(query,messages, update_callback):
     state = GraphState()
     print("query: ", query)
-    state["prompt"] = query["content"]
+    state["prompt"] = escape_curly_braces(query["content"])
     state["previous_result"] = "None"
     state["previous_code"] = "None"
     state["failedTimes"] = 0
     state["type"] = "other"
-    state["messages"] = messages
+    state["messages"] = escape_messages_curly_braces(messages)
     state["links"] = []
     state["additionalResources"] = []
     #state["update_process"] = update_callback
