@@ -19,3 +19,4 @@ requests
 html2text
 textstat
 selenium
+iteration_utilities

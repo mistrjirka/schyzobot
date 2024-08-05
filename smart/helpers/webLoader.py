@@ -26,6 +26,9 @@ class MarkdownWebLoader:
         self.chrome_options.add_argument("--disable-gpu")
         self.chrome_options.add_argument("--no-sandbox")
         self.chrome_options.add_argument("--disable-dev-shm-usage")
+        self.chrome_options.add_argument("--log-level=3")  # Suppress logs
+        self.chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])  # Exclude logging to prevent file creation
+
 
     def render_page(self, url):
         driver = webdriver.Chrome(options=self.chrome_options)
@@ -59,11 +62,11 @@ class MarkdownWebLoader:
 
     def load(self, url):
         try:
-            print(f"Downloading page: {url}")
+            #print(f"Downloading page: {url}")
             html = self.render_page(url)
             if html is None:
                 raise Exception("Failed to render page with Selenium")
-            print("Page rendered and downloaded")
+            #print("Page rendered and downloaded")
 
             soup = bs4.BeautifulSoup(html, 'html.parser')
 
@@ -96,7 +99,7 @@ class MarkdownWebLoader:
         else:
             print(f"Page {url} loaded")
 
-    def load_multiple(self, timeout=30, max_concurrent_loads=10):
+    def load_multiple(self, timeout=20, max_concurrent_loads=20):
         results = [None] * len(self.urls)
         threads = []
 
@@ -111,12 +114,10 @@ class MarkdownWebLoader:
             for thread in current_threads:
                 thread.join()
 
-        print("Results:", results)
         docs = [doc for result in results if result is not None for doc in result]
-        print("Docs:", docs)
         return docs
 
-def load_websites(search_results: List[dict], timeout=60, max_concurrent_loads=10):
+def load_websites(search_results: List[dict], timeout=20, max_concurrent_loads=20):
     urlstosearch = filter(lambda x: "link" in x, search_results)
     urls = [result['link'] for result in urlstosearch]
     print("loading content")
@@ -128,18 +129,24 @@ def load_websites(search_results: List[dict], timeout=60, max_concurrent_loads=1
 def filter_and_sort_by_readability(documents: List[Document], min_score=35) -> List[Document]:
     scored_docs = []
     print("Scoring documents by readability")
+    i = 0
     for doc in documents:
+        #adding progress bar
+        if i % 10 == 0:
+            print(f"Scoring document {i}/{len(documents)}", end="\r")
+        
         readability_score = textstat.flesch_reading_ease(doc.page_content)
         #print(f"Readability score for: {readability_score} {doc.page_content[:250]} ")
         if min_score <= readability_score:
             doc.metadata["readability_score"] = readability_score
             scored_docs.append(doc)
-    
+        i += 1
+    print()
     # Sort documents by readability score
     scored_docs.sort(key=lambda doc: doc.metadata["readability_score"], reverse=True)
     return scored_docs
 
-def load_and_split_websites(search_results: List[dict], timeout=50, max_concurrent_loads=10, max_docs=150):
+def load_and_split_websites(search_results: List[dict], timeout=20, max_concurrent_loads=20, max_docs=150):
     docs = load_websites(search_results, timeout, max_concurrent_loads)
     
     print("---------------")

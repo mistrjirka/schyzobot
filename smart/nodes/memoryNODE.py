@@ -2,7 +2,7 @@ import hashlib
 import os
 import json
 from langchain_community.utilities import SearxSearchWrapper
-from smart.models.ollama_model import llm, llmNoJson  # Ensure this is correctly imported
+from smart.models.ollama_model import llmNoJson, llmNoJsonCreative
 from langchain_chroma import Chroma
 from smart.helpers.graph_state import GraphState
 from smart.helpers.webLoader import load_and_split_websites
@@ -12,7 +12,9 @@ from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from smart.helpers.sourceClassifier import grade_document,create_chroma_query
 from langchain_core.prompts import ChatPromptTemplate
-
+from iteration_utilities import unique_everseen
+import random
+import math
 import re
 
 HASHES_FILE = 'document_hashes.json'
@@ -39,8 +41,34 @@ Output: "fast fourier transform calculation"
 
 input_variables=["question", "all_messages"]
 )
+promptSearchQueryCreative = PromptTemplate(
+    template="""
+Previous conversation with the user:
+{all_messages}
+
+Question: 
+{question}
+
+Previous:
+
+You are a creative search engine query generator. Given the following user question, create a relevant creative search engine query.
+
+The result should be a string containing the search query. No explanation or preamble is needed. Your answer will go straight into the search engine. So include just 1 best query. Do not include nay specification about what is the query.
+Example input and output:
+Input Question: "What is the capital of France?"
+Output: "capital of France"
+Input Question: "What is the population of India?"
+Output: "population of India"
+Input Question: "How to calculate fast fourier transform?"
+Output: "fast fourier transform calculation"
+""",
+
+input_variables=["question", "all_messages"]
+)
+
 searchQueryCreator = promptSearchQuery | llmNoJson | StrOutputParser()
-    
+searchQueryCreatorCreative = promptSearchQueryCreative | llmNoJsonCreative | StrOutputParser()
+
 def extract_links_from_prompt(prompt_text):
     # Use regex to find all links in the prompt text
     links = re.findall(r'(https?://\S+)', prompt_text)
@@ -60,26 +88,39 @@ def save_hashes(file_path, hashes):
     with open(file_path, 'w') as file:
         json.dump(list(hashes), file)
         
-def create_search_query(prompt: GraphState):
+def create_search_query(prompt: GraphState, creative: bool = False) -> str:
     all_messages = prompt["messages"]
     promptChat = ChatPromptTemplate.from_messages(all_messages)
-    query = searchQueryCreator.invoke({"question": prompt["prompt"], "all_messages": promptChat})  
+    if creative:
+        query = searchQueryCreatorCreative.invoke({"question": prompt["prompt"], "all_messages": promptChat})
+    else:
+        query = searchQueryCreator.invoke({"question": prompt["prompt"], "all_messages": promptChat})  
     print("Search query: " + query)
     return query
 
-def process_graph_state(graph_state: GraphState) -> GraphState:
+def search_through_resources(graph_state: GraphState, chroma_db: Chroma, N: int, to_search: int):
     search = SearxSearchWrapper(searx_host="http://192.168.1.14:81", unsecure=True)  # Replace with your SearxNG instance URL
-    chroma_db = Chroma(collection_name="resources", persist_directory="./chroma_data", embedding_function=embeddings)
+    prompt = graph_state['prompt']
 
-    prompt = graph_state['prompt']    
-    search_results = search.results(query=create_search_query(graph_state), num_results=18)
     extracted_links = extract_links_from_prompt(prompt)
     extracted_search_results = [{"link": link} for link in extracted_links]
+    queried = []
+
+    search_results = extracted_search_results
+    for i in range(N):
+        queried.append(create_search_query(graph_state, i > 0))
+
+    queried = list(set(queried))
+    to_search_count = math.ceil(to_search / len(queried))
+
+    for query in queried:
+        found = search.results(query=query, num_results=to_search_count)
+        search_results += found
             
-    search_results += extracted_search_results
-    relevant_resources = []
     
-    split_docs = load_and_split_websites(search_results)
+    search_results = list(unique_everseen(search_results))
+    
+    split_docs = load_and_split_websites(search_results, max_docs=300)
 
     existing_hashes = load_hashes(HASHES_FILE)
     new_docs = []
@@ -90,22 +131,48 @@ def process_graph_state(graph_state: GraphState) -> GraphState:
         if doc_hash not in existing_hashes:
             new_docs.append(doc)
             new_hashes.add(doc_hash)
-        else:
-            print(f"Document with hash {doc_hash} already exists")
 
     if new_docs:
         chroma_db.add_documents(new_docs)
         existing_hashes.update(new_hashes)
         save_hashes(HASHES_FILE, existing_hashes)
 
-    retriever = chroma_db.as_retriever(search_kwargs={"k": 50})
-    searchChroma = create_chroma_query(graph_state)
-    print("Search Chroma: " + searchChroma)
-    results = retriever.invoke(searchChroma)
+def process_graph_state(graph_state: GraphState) -> GraphState:
+    chroma_db = Chroma(collection_name="resources", persist_directory="./chroma_data", embedding_function=embeddings)
+
+    N = 3
+    RELEVANT_SOURCES = 20
+    to_search = 21
+    
+    search_through_resources(graph_state, chroma_db, N, to_search)
+    
+    relevant_resources = []
+    
+    queries = []
+    for i in range(N):
+        queries.append(create_search_query(graph_state, i > 0))
+    
+    queries = list(set(queries))
+    to_extract = math.ceil(100 / len(queries))
+    
+    
+    
+
+    retriever = chroma_db.as_retriever(search_kwargs={"k": to_extract})
+    found = []
+    for searchChroma in queries:
+        print("Search Chroma: " + searchChroma)
+        found.append(retriever.invoke(searchChroma))
+    zipped_queried = list(zip(*found))
+    results = []
+    for queried in zipped_queried:
+        results.extend(queried)
+    
+    results = list(unique_everseen(results))
     indx = 0
     all_messages = graph_state["messages"]
 
-    while len(relevant_resources) < 15 and indx < len(results):
+    while len(relevant_resources) < RELEVANT_SOURCES and indx < len(results):
         if grade_document(graph_state["prompt"], results[indx], all_messages):
             relevant_resources.append(results[indx])
         indx += 1
@@ -129,4 +196,3 @@ if __name__ == "__main__":
     )
 
     updated_graph_state = process_graph_state(graph_state)
-    print(updated_graph_state)

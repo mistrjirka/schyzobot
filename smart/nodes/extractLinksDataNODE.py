@@ -21,7 +21,7 @@ def load_links(graph_state: GraphState) -> GraphState:
     all_messages = graph_state["messages"]
 
 
-    while len(relevant_resources) < 7 and indx < len(results):
+    while len(relevant_resources) < 15 and indx < len(results):
         if grade_for_summarization(results[indx], all_messages):
             relevant_resources.append(results[indx])
         indx += 1

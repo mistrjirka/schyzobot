@@ -4,11 +4,15 @@ from langchain_community.chat_models import ChatOllama
 MODEL = "llama3.1:8b-instruct-q8_0"#"dolphin-llama3:8b-v2.9-q8_0"#"dolphin-llama3:70b"#"dolphin-llama3:8b-v2.9-fp16"
 # higher temparature means higher creativity
 TEMPERATURE = 0.45
-
+CREATIVE_TEMPERATURE = 0.9
 print("Loading ollama model...", end=" ", flush=True)
 llm = ChatOllama(model=MODEL, temperature=TEMPERATURE, format="json")
 
 llmNoJson = ChatOllama(model=MODEL, temperature=TEMPERATURE)
+
+llmBinary = ChatOllama(model=MODEL, temperature=TEMPERATURE, max_new_tokens=1)
+
+llmNoJsonCreative = ChatOllama(model=MODEL, temperature=CREATIVE_TEMPERATURE)
 
 
 print("DONE")
