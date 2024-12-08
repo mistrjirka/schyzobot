@@ -1,7 +1,7 @@
-from langchain_community.chat_models import ChatOllama
+from langchain_ollama import ChatOllama  # Updated import
 
 # select ollama model
-MODEL = "llama3.1:70b-instruct-q2_K" #"dolphin-llama3:70b" 
+MODEL = "llama3.3:70b-instruct-q2_K" #"dolphin-llama3:70b" 
 MODEL_ALT1 = ""
 #"dolphin-llama3:8b-v2.9-q8_0"
 #"deepseek-coder-v2:16b" "codegemma:7b-code-q5_0" "granite-code"

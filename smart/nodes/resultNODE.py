@@ -1,6 +1,8 @@
 from smart.helpers.graph_state import GraphState
 
 def getFormattedResult(result: GraphState):
+    if "update_process" in result:
+        result["update_process"]("Formatting the final result")
     code_execution_result = result["code_output"]
     code = result["code"]
     explanation = result["explanation"]

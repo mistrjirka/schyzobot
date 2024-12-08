@@ -1,4 +1,4 @@
-from smart.models.ollama_model import llm, llmNoJson, llmSmallBinary as llmBinary  # Ensure this is correctly imported
+from smart.models.ollama_model import llm, llmNoJson, llmBinary, binary_parser,llmSmallBinary, BinaryResponse
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain.prompts import PromptTemplate
@@ -14,14 +14,22 @@ Chat with the user:
 You are a grader assessing the relevance of a retrieved document for summarization.
  
 Here is the retrieved document: \n\n {document} \n\n
-Assess the document for relevance to the core content, filtering out irrelevant parts like headers, footers, and unrelated links. If the document contains substantial content suitable for summarization, grade it as relevant.
-It does not need to be a stringent test. The goal is to filter out erroneous retrievals. \n
-Answer with a binary score "YES" or "NO", any additional information will be considered as a wrong answer. \n
+
+Assess the document for relevance to the core content, filtering out irrelevant parts like headers, footers, and unrelated links.
+Return a JSON object with a single "result" boolean field: true if the document is relevant, false otherwise.
+
+Example outputs:
+For relevant content: {{"result": true}}
+For irrelevant content: {{"result": false}}
+
+For example:
+- If the document contains substantial content suitable for summarization -> {{"result": true}}
+- If the document contains errors or nonsense -> {{"result": false}}
+- If the document is just headers/footers -> {{"result": false}}
     """,
     input_variables=["document", "all_messages"],
-) 
+)
 
-    
 promptChromaQuery = PromptTemplate(
     template="""
 Previous conversation with the user:
@@ -48,19 +56,26 @@ promptEN = PromptTemplate(
 Chat with the user:
 {all_messages}
 
-You are a grader assessing relevance of a retrieved document to a user question. \n 
+You are a grader assessing relevance of a retrieved document to a user question.
 Here is the retrieved document: \n\n {document} \n\n
 Here is the user question: {question} \n
-If the document contains keywords related to the user question, grade it as relevant. \n
-It does not need to be a stringent test. The goal is to filter out erroneous retrievals. \n
-Answer with a binary score "YES" or "NO", any additional information will be considered as a wrong answer. \n
+
+Return a JSON object with a single "result" boolean field: true if the document is relevant, false otherwise.
+
+Example outputs:
+For relevant content: {{"result": true}}
+For irrelevant content: {{"result": false}}
+
+For example:
+- If the question is "What is the capital of France?" and document contains "Paris is the capital..." -> {{"result": true}}
+- If the document contains unrelated information -> {{"result": false}}
+- If the document contains errors or nonsense -> {{"result": false}}
     """,
     input_variables=["question", "document", "all_messages"],
-) 
+)
 
-retrieval_grader = promptEN | llmBinary | StrOutputParser()
-
-summarization_grader = promptEN_summarization | llmBinary | StrOutputParser()
+retrieval_grader = promptEN | llmBinary | binary_parser
+summarization_grader = promptEN_summarization | llmBinary | binary_parser
 
 chroma_query_creator = promptChromaQuery | llmNoJson | StrOutputParser()
 chroma_query_creator_creative = promptChromaQuery | llmNoJson | StrOutputParser()
@@ -71,31 +86,32 @@ text_splitter = RecursiveCharacterTextSplitter(
 
 def grade_document(question, document, all_messages):
     promptChat = ChatPromptTemplate.from_messages(all_messages)
-    answer = retrieval_grader.invoke({"question": question, "document": document, "all_messages": promptChat})
-    answer = answer.upper()
     retries = 0
-    while "YES" not in answer and "NO" not in answer and retries < 10:
-        print("bad answer: ", answer)
-        print(f"Retrying grading document: {retries}")
-        retries += 1
-        answer = retrieval_grader.invoke({"question": question, "document": document, "all_messages": promptChat})
-    print(f"Grading document: {answer}")
-
-    return "YES" in answer
+    while retries < 3:
+        try:
+            print("grading document")
+            response = retrieval_grader.invoke({"question": question, "document": document, "all_messages": promptChat})
+            print(response)
+            return response["result"]
+        #write to log
+        except Exception as e:
+            print(e)
+            retries += 1
+    return False
 
 def grade_for_summarization(document, all_messages):
     promptChat = ChatPromptTemplate.from_messages(all_messages)
-    answer = summarization_grader.invoke({"document": document, "all_messages": promptChat})
-    answer = answer.upper()
     retries = 0
-    while "YES" not in answer and "NO" not in answer and retries < 10:
-        print("bad answer: ", answer)
-        print(f"Retrying grading document: {retries}")
-        retries += 1
-        answer = summarization_grader.invoke({"document": document, "all_messages": promptChat})
-
-    print(f"Grading document: {answer}")
-    return "YES" in answer
+    while retries < 3:
+        try:
+            response = summarization_grader.invoke({"document": document, "all_messages": promptChat})
+            print(response)
+            return response["result"]
+        
+        except Exception as e:
+            print(e)
+            retries += 1
+    return False
 
 def create_chroma_query(prompt: GraphState, creative=False):
     all_messages = prompt["messages"]

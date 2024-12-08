@@ -39,6 +39,9 @@ Input Question: "What is the population of India?"
 Output: "population of India"
 Input Question: "How to calculate fast fourier transform?"
 Output: "fast fourier transform calculation"
+
+Remember DO NOT make just simple copy of the previous query. Try to create different original one.
+The query needs to have the relevant keywords and context for the question. So if there is question about last expedition. The word last has to be there.
 """,
 
 input_variables=["question", "all_messages", "prev_query"]
@@ -110,11 +113,17 @@ def search_through_resources(graph_state: GraphState, chroma_db: Chroma, N: int,
 
     extracted_links = extract_links_from_prompt(prompt)
     extracted_search_results = [{"link": link} for link in extracted_links]
+
     queried = []
 
     search_results = extracted_search_results
     for i in range(N):
-        queried.append(create_search_query(graph_state, i > 0))
+        if i == 0:
+            queried.append(create_search_query(graph_state, False))
+        else:
+            queried.append(create_search_query(graph_state, i > 1, "\n".join(queried)))
+        if "update_process" in graph_state:
+            graph_state["update_process"](f"Searching for relevant resources {i+1}/{N} with query: {queried[-1]}\n")
 
     queried = list(set(queried))
     to_search_count = math.ceil(to_search / len(queried))
@@ -154,31 +163,42 @@ def get_chroma():
 
 
 def process_graph_state(graph_state: GraphState) -> GraphState:
-    print("currently in memory NODE")
-
+    if "update_process" in graph_state:
+        graph_state["update_process"]("Entering memory processing phase...\n")
+    else:
+        print("update process not found")
     chroma_db = get_chroma()
-    print("chroma db created")
-    N = 3
-    RELEVANT_SOURCES = 12
+    
+    N = 2
+    RELEVANT_SOURCES = 20
     to_search = 15
-    print("searching through web")
+
+    if "update_process" in graph_state:
+        graph_state["update_process"]("🌐 Searching through web resources...\n")
+    
     search_through_resources(graph_state, chroma_db, N, to_search)
-    print("searched through web")
-    relevant_resources = []
+    
+    if "update_process" in graph_state:
+        graph_state["update_process"]("🔍 Generating search queries for local database...\n")
     
     queries = []
-    print("Creating search queries for chroma")    
     for i in range(N):
-        queries.append(create_search_query(graph_state, i > 0, "\n".join(queries)))
-    print("Search queries created")
+        query = create_search_query(graph_state, i > 0, "\n".join(queries))
+        queries.append(query)
+        if "update_process" in graph_state:
+            graph_state["update_process"](f"Generated query {i+1}: {query}\n")
+
     queries = list(set(queries))
     to_extract = math.ceil(100 / len(queries))
+
+    if "update_process" in graph_state:
+        graph_state["update_process"]("📚 Searching through local knowledge base...\n")
 
     retriever = chroma_db.as_retriever(search_kwargs={"k": to_extract})
     found = []
     for searchChroma in queries:
-        print("Search Chroma: " + searchChroma)
         found.append(retriever.invoke(searchChroma))
+
     zipped_queried = list(zip(*found))
     results = []
     for queried in zipped_queried:
@@ -187,14 +207,28 @@ def process_graph_state(graph_state: GraphState) -> GraphState:
     results = list(unique_everseen(results))
     indx = 0
     all_messages = graph_state["messages"]
-
+    relevant_resources = []  # Initialize the list here
+    if "update_process" in graph_state:
+        graph_state["update_process"]("🔍 Grading search results...\n")
+    
+    total_results = min(RELEVANT_SOURCES, len(results))
     while len(relevant_resources) < RELEVANT_SOURCES and indx < len(results):
+        if "update_process" in graph_state:
+            # Use return character to update progress inline
+            graph_state["update_process"](f"\rGrading document {indx + 1}/{total_results} ({len(relevant_resources)} relevant found)")
+        
         if grade_document(graph_state["prompt"], results[indx], all_messages):
             relevant_resources.append(results[indx])
         indx += 1
-    #print("Relevant resources found " + str(len(relevant_resources) +" ending memory node"))
+
+    # Add a newline after the progress updates
+    if "update_process" in graph_state:
+        graph_state["update_process"]("\n")
+    
     graph_state['additionalResources'] = relevant_resources
-    #print("Relevant resources:" + str(relevant_resources))
+    
+    if "update_process" in graph_state:
+        graph_state["update_process"](f"Found {len(relevant_resources)} relevant resources\n")
     
     return graph_state
 
