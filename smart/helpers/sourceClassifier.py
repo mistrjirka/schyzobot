@@ -1,4 +1,4 @@
-from smart.models.ollama_model import llm, llmNoJson, llmBinary  # Ensure this is correctly imported
+from smart.models.ollama_model import llm, llmNoJson, llmSmallBinary as llmBinary  # Ensure this is correctly imported
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain.prompts import PromptTemplate

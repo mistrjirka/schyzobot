@@ -8,7 +8,7 @@ def extract_links_from_prompt(prompt_text):
 
 
 def classify_prompt_researchNeeded(prompt: GraphState) -> str:
-    
+
     if len(prompt["links"]) > 0:
         return "SUMMARIZE"
     else:

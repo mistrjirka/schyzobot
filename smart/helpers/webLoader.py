@@ -22,17 +22,19 @@ class MarkdownWebLoader:
     def __init__(self, urls):
         self.urls = urls
         self.chrome_options = Options()
-        self.chrome_options.add_argument("--headless")
-        self.chrome_options.add_argument("--disable-gpu")
+        self.chrome_options.add_argument("--headless=new")
+        self.chrome_options.add_argument("window-size=1920,1080")
         self.chrome_options.add_argument("--no-sandbox")
         self.chrome_options.add_argument("--disable-dev-shm-usage")
+        self.chrome_options.add_argument("--incognito")        
         self.chrome_options.add_argument("--log-level=3")  # Suppress logs
         self.chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])  # Exclude logging to prevent file creation
-
+         
 
     def render_page(self, url):
         driver = webdriver.Chrome(options=self.chrome_options)
         try:
+            print(f"loading {url}")
             driver.get(url)
             # Adjust the following line to wait for an element that indicates the page is fully loaded
             WebDriverWait(driver, 30).until(
@@ -40,9 +42,12 @@ class MarkdownWebLoader:
             )
             # Scroll down to load more content
             last_height = driver.execute_script("return document.body.scrollHeight")
-            while True:
+            max_tries = 5
+            while True and max_tries > 0:
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(2)  # Wait to load page
+                time.sleep(1)  # Wait to load page
+                print("going down")
+                max_tries -= 1
                 new_height = driver.execute_script("return document.body.scrollHeight")
                 if new_height == last_height:
                     break
@@ -117,7 +122,7 @@ class MarkdownWebLoader:
         docs = [doc for result in results if result is not None for doc in result]
         return docs
 
-def load_websites(search_results: List[dict], timeout=20, max_concurrent_loads=20):
+def load_websites(search_results: List[dict], timeout=30, max_concurrent_loads=20):
     urlstosearch = filter(lambda x: "link" in x, search_results)
     urls = [result['link'] for result in urlstosearch]
     print("loading content")
@@ -126,7 +131,7 @@ def load_websites(search_results: List[dict], timeout=20, max_concurrent_loads=2
     return docs
 
 
-def filter_and_sort_by_readability(documents: List[Document], min_score=35) -> List[Document]:
+def filter_and_sort_by_readability(documents: List[Document], min_score=35, min_number_of_docs: int = 10) -> List[Document]:
     scored_docs = []
     print("Scoring documents by readability")
     i = 0
@@ -136,17 +141,21 @@ def filter_and_sort_by_readability(documents: List[Document], min_score=35) -> L
             print(f"Scoring document {i}/{len(documents)}", end="\r")
         
         readability_score = textstat.flesch_reading_ease(doc.page_content)
-        #print(f"Readability score for: {readability_score} {doc.page_content[:250]} ")
-        if min_score <= readability_score:
-            doc.metadata["readability_score"] = readability_score
-            scored_docs.append(doc)
+
+        doc.metadata["readability_score"] = readability_score
+        scored_docs.append(doc)
         i += 1
     print()
     # Sort documents by readability score
     scored_docs.sort(key=lambda doc: doc.metadata["readability_score"], reverse=True)
+    
+    scored_docs = [doc for doc in scored_docs if doc.metadata["readability_score"] >= min_score]
+    if len(scored_docs) < min_number_of_docs:
+        print(f"Warning: only {len(scored_docs)} documents with readability score >= {min_score} found")
+        scored_docs = scored_docs[:min_number_of_docs]
     return scored_docs
 
-def load_and_split_websites(search_results: List[dict], timeout=20, max_concurrent_loads=20, max_docs=150):
+def load_and_split_websites(search_results: List[dict], timeout=30, max_concurrent_loads=4, max_docs=150):
     docs = load_websites(search_results, timeout, max_concurrent_loads)
     
     print("---------------")

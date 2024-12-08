@@ -61,20 +61,11 @@ def openapi_chat():
     messages = data.get("messages", "default_value")
     messagesFormated = [(message["role"], message["content"]) for message in messages]
 
-    def generate():
-        message = messages[-1]
-        def update_progress(update):
-            splitto4 = len(update) // 4
-            for i in range(4):
-                yield f"data: {json.dumps(generate_template(update[i*splitto4:(i+1)*splitto4]))}\n\n"
-        #yield from update_progress("Working on it...")
-        
-
-        result = get_answer(message, messagesFormated, update_progress)
-        response_data = generate_template(result)
-        yield f"data: {json.dumps(response_data)}\n\n"
-
-    return Response(generate(), content_type="text/event-stream")
+    message = messages[-1]
+    result = get_answer(message, messagesFormated, None)
+    response_data = generate_template(result)
+    
+    return jsonify(response_data)
 
 @app.route('/chat', methods=['GET'])
 def handle_get_request():

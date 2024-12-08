@@ -7,6 +7,7 @@ from smart.models.ollama_model import llmNoJson, genericPrompt
 from smart.models.programming_model import llmNoJson as codingllm
 from smart.helpers.formatDocument import document_formatter
 from smart.helpers.generalHelpers import escape_curly_braces
+
 def answer(prompt: GraphState) -> str:
 
     print("retarded radek")
@@ -33,7 +34,7 @@ def answer(prompt: GraphState) -> str:
 {sources}
     """
     prompt["answer"] = res
-    
+    print("retarded radek done")
     return prompt
     
 if __name__ == "__main__":

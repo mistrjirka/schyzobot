@@ -27,6 +27,8 @@ Previous conversation with the user:
 Question: 
 {question}
 
+Previous query (try to create different original one)
+{prev_query}
 You are a search engine query generator. Given the following user question, create a relevant search engine query.
 
 The result should be a string containing the search query. No explanation or preamble is needed. Your answer will go straight into the search engine. So include just 1 best query. Do not include nay specification about what is the query.
@@ -39,7 +41,7 @@ Input Question: "How to calculate fast fourier transform?"
 Output: "fast fourier transform calculation"
 """,
 
-input_variables=["question", "all_messages"]
+input_variables=["question", "all_messages", "prev_query"]
 )
 promptSearchQueryCreative = PromptTemplate(
     template="""
@@ -49,7 +51,8 @@ Previous conversation with the user:
 Question: 
 {question}
 
-Previous:
+Previous query (try to create different original one)
+{prev_query}
 
 You are a creative search engine query generator. Given the following user question, create a relevant creative search engine query.
 
@@ -63,7 +66,7 @@ Input Question: "How to calculate fast fourier transform?"
 Output: "fast fourier transform calculation"
 """,
 
-input_variables=["question", "all_messages"]
+input_variables=["question", "all_messages", "prev_query"]
 )
 
 searchQueryCreator = promptSearchQuery | llmNoJson | StrOutputParser()
@@ -88,14 +91,17 @@ def save_hashes(file_path, hashes):
     with open(file_path, 'w') as file:
         json.dump(list(hashes), file)
         
-def create_search_query(prompt: GraphState, creative: bool = False) -> str:
+def create_search_query(prompt: GraphState, creative: bool = False, prev_query = "None, first time run") -> str:
     all_messages = prompt["messages"]
     promptChat = ChatPromptTemplate.from_messages(all_messages)
     if creative:
-        query = searchQueryCreatorCreative.invoke({"question": prompt["prompt"], "all_messages": promptChat})
+        query = searchQueryCreatorCreative.invoke({"question": prompt["prompt"], "all_messages": promptChat, "prev_query": prev_query})
     else:
-        query = searchQueryCreator.invoke({"question": prompt["prompt"], "all_messages": promptChat})  
+        query = searchQueryCreator.invoke({"question": prompt["prompt"], "all_messages": promptChat, "prev_query": prev_query})  
+    #remove "" from the query
+    query = query.replace('"', '')
     print("Search query: " + query)
+
     return query
 
 def search_through_resources(graph_state: GraphState, chroma_db: Chroma, N: int, to_search: int):
@@ -119,6 +125,7 @@ def search_through_resources(graph_state: GraphState, chroma_db: Chroma, N: int,
             
     
     search_results = list(unique_everseen(search_results))
+    print("found " + str(len(search_results)))
     
     split_docs = load_and_split_websites(search_results, max_docs=300)
 
@@ -137,26 +144,35 @@ def search_through_resources(graph_state: GraphState, chroma_db: Chroma, N: int,
         existing_hashes.update(new_hashes)
         save_hashes(HASHES_FILE, existing_hashes)
 
-def process_graph_state(graph_state: GraphState) -> GraphState:
-    chroma_db = Chroma(collection_name="resources", persist_directory="./chroma_data", embedding_function=embeddings)
 
+__get_chroma_var = None
+def get_chroma():
+    global __get_chroma_var
+    if __get_chroma_var is None:
+        __get_chroma_var = Chroma(collection_name="resources", persist_directory="./chroma_data", embedding_function=embeddings)
+    return __get_chroma_var
+
+
+def process_graph_state(graph_state: GraphState) -> GraphState:
+    print("currently in memory NODE")
+
+    chroma_db = get_chroma()
+    print("chroma db created")
     N = 3
-    RELEVANT_SOURCES = 20
-    to_search = 21
-    
+    RELEVANT_SOURCES = 12
+    to_search = 15
+    print("searching through web")
     search_through_resources(graph_state, chroma_db, N, to_search)
-    
+    print("searched through web")
     relevant_resources = []
     
     queries = []
+    print("Creating search queries for chroma")    
     for i in range(N):
-        queries.append(create_search_query(graph_state, i > 0))
-    
+        queries.append(create_search_query(graph_state, i > 0, "\n".join(queries)))
+    print("Search queries created")
     queries = list(set(queries))
     to_extract = math.ceil(100 / len(queries))
-    
-    
-    
 
     retriever = chroma_db.as_retriever(search_kwargs={"k": to_extract})
     found = []
@@ -176,7 +192,7 @@ def process_graph_state(graph_state: GraphState) -> GraphState:
         if grade_document(graph_state["prompt"], results[indx], all_messages):
             relevant_resources.append(results[indx])
         indx += 1
-
+    #print("Relevant resources found " + str(len(relevant_resources) +" ending memory node"))
     graph_state['additionalResources'] = relevant_resources
     #print("Relevant resources:" + str(relevant_resources))
     

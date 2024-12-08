@@ -71,13 +71,15 @@ Previous failure or failed attempt:
 retrieval_classifier = promptEN | llm | JsonOutputParser()
 
 def classify_question(state: GraphState) -> str:
+    print("currently in classify question section")
     prompt = state["prompt"]
     retries = 0
     answer = {"answer":"other"}
     answerCorrect = False
     failure = "No previous failure"
-    while retries < 10 and not answerCorrect:
+    while retries < 3 and not answerCorrect:
         try:
+            print("asking the classifier")  
             answer = retrieval_classifier.invoke({"prompt": prompt, "failure": failure})
             if "answer" in answer and answer["answer"] in CLASSES:
                 answerCorrect = True
@@ -89,8 +91,9 @@ def classify_question(state: GraphState) -> str:
             retries += 1
     
     state["type"] = answer["answer"]
-    #print("classified question as: ", state["type"])
+    print("classified question as: ", state["type"])
     #state["update_process"]("classified question as: " + state["type"] + "\n")
+
     return state
     
 if __name__ == "__main__":

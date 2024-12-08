@@ -104,7 +104,7 @@ def execute_python_code(code):
 
 
 def makeProgram(state: GraphState) -> str:
-    print("making program")
+    print("Currently in making program")
     retries = 0
     output_is_valid = False
     answer = state.copy()

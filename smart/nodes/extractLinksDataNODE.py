@@ -28,5 +28,6 @@ def load_links(graph_state: GraphState) -> GraphState:
 
 
     graph_state["additionalResources"] = relevant_resources
+    print("extractLinksDataNODE done")
     
     return graph_state
